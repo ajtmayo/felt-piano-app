@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#160F0C">
+<title>Felt — hum a line, hear a piano</title>
+<style>
+  :root{
+    --lid:#160F0C;
+    --case:#231812;
+    --case-2:#2E211A;
+    --ivory:#EFE7D7;
+    --ivory-dim:#B9AE9B;
+    --ebony:#0C0908;
+    --felt:#A0322C;
+    --bronze:#C9973F;
+    --bronze-soft:#8A6A2E;
+    --line:rgba(239,231,215,.14);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(120% 80% at 50% -10%, #33241B 0%, var(--lid) 62%),
+      var(--lid);
+    color:var(--ivory);
+    font-family:"Avenir Next","Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100dvh;
+    padding:22px 18px 40px;
+  }
+  .wrap{max-width:620px;margin:0 auto}
+
+  header{display:flex;align-items:baseline;gap:10px;margin-bottom:18px}
+  .mark{
+    font-family:"Hoefler Text",Georgia,"Times New Roman",serif;
+    font-size:23px;letter-spacing:.14em;color:var(--ivory);
+    text-shadow:0 1px 0 rgba(0,0,0,.6);
+  }
+  .tag{font-size:12.5px;color:var(--ivory-dim);line-height:1.4}
+
+  /* ---- readout ---- */
+  .stage{
+    position:relative;
+    background:linear-gradient(180deg,var(--case-2),var(--case));
+    border:1px solid var(--line);
+    border-radius:3px;
+    padding:20px 18px 14px;
+    box-shadow:0 18px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  .note-row{display:flex;align-items:center;justify-content:center;gap:14px;min-height:104px}
+  .note{
+    font-family:"Hoefler Text",Georgia,"Times New Roman",serif;
+    font-size:76px;line-height:.9;font-weight:600;
+    color:var(--ivory);
+    transition:color .18s ease, opacity .18s ease;
+  }
+  .note.idle{color:#4B3A30}
+  .note sub{font-size:26px;font-weight:400;color:var(--bronze);vertical-align:baseline;margin-left:2px}
+  .hz{font-size:12.5px;color:var(--ivory-dim);font-variant-numeric:tabular-nums;min-width:76px}
+
+  .needle{position:relative;height:26px;margin:4px 0 2px}
+  .needle .track{position:absolute;top:12px;left:0;right:0;height:1px;background:var(--line)}
+  .needle .center{position:absolute;top:5px;left:50%;width:1px;height:15px;background:var(--bronze-soft)}
+  .needle .tick{
+    position:absolute;top:3px;left:50%;width:2px;height:19px;border-radius:1px;
+    background:var(--felt);transform:translateX(-1px);
+    transition:left .09s linear, opacity .2s ease;box-shadow:0 0 10px rgba(160,50,44,.7);
+  }
+  .needle .flat,.needle .sharp{position:absolute;top:0;font-size:11px;color:#6B564A}
+  .needle .flat{left:0}.needle .sharp{right:0}
+
+  canvas{display:block;width:100%;height:96px;margin-top:10px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+
+  .meter{height:3px;background:rgba(0,0,0,.4);margin-top:10px;overflow:hidden}
+  .meter i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--bronze-soft),var(--bronze));transition:width .06s linear}
+
+  /* ---- keys ---- */
+  .keys{position:relative;height:78px;margin-top:16px;user-select:none;
+        background:var(--ebony);padding:4px 4px 0;border-radius:2px;
+        box-shadow:0 10px 24px rgba(0,0,0,.5)}
+  .kb{position:relative;height:74px}
+  .w,.b{position:absolute;top:0;border-radius:0 0 2px 2px;cursor:pointer}
+  .w{height:74px;background:linear-gradient(180deg,#F6F0E2,#D9CFBA);border:1px solid #0C0908;border-top:none}
+  .b{height:46px;background:linear-gradient(180deg,#2A2320,#0B0908);border:1px solid #000;z-index:2}
+  .w.on{background:linear-gradient(180deg,var(--bronze),#9A7229)}
+  .b.on{background:linear-gradient(180deg,#E0B25A,#8A6A2E)}
+
+  /* ---- controls ---- */
+  .panel{margin-top:18px;display:grid;gap:14px}
+  .start{
+    width:100%;padding:15px;border:none;border-radius:2px;cursor:pointer;
+    background:var(--felt);color:#FCEFE6;font-size:15.5px;letter-spacing:.04em;
+    font-family:inherit;box-shadow:0 6px 0 #6E211C;transition:transform .06s ease,box-shadow .06s ease;
+  }
+  .start:active{transform:translateY(3px);box-shadow:0 3px 0 #6E211C}
+  .start.live{background:#2E211A;color:var(--ivory);box-shadow:0 6px 0 #150F0C;border:1px solid var(--line)}
+  .start:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--bronze);outline-offset:2px}
+
+  .status{font-size:12.5px;line-height:1.5;color:var(--ivory-dim);margin-top:-6px}
+  .status.bad{color:#E8A79C}
+  .status.good{color:var(--bronze)}
+  .ghost{
+    width:100%;padding:11px;border:1px solid var(--line);border-radius:2px;cursor:pointer;
+    background:transparent;color:var(--ivory-dim);font-family:inherit;font-size:13.5px
+  }
+  .ghost:active{background:rgba(255,255,255,.05)}
+  .transport{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:-4px}
+  .transport .ghost{padding:12px 4px;font-size:13px}
+  .ghost[disabled]{opacity:.38}
+  .ghost.armed{border-color:var(--felt);color:#F0C4BB;background:rgba(160,50,44,.16)}
+  .row{display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--ivory-dim)}
+  .row label{flex:0 0 96px;color:var(--ivory-dim)}
+  .row .val{flex:0 0 46px;text-align:right;font-variant-numeric:tabular-nums;color:var(--ivory)}
+  input[type=range]{flex:1;accent-color:var(--bronze);background:transparent}
+  select{
+    flex:1;background:var(--case);color:var(--ivory);border:1px solid var(--line);
+    border-radius:2px;padding:8px 10px;font-family:inherit;font-size:13.5px
+  }
+  .toggles{display:flex;gap:18px;flex-wrap:wrap;font-size:13.5px;color:var(--ivory-dim)}
+  .toggles label{display:flex;align-items:center;gap:7px;cursor:pointer}
+  input[type=checkbox]{accent-color:var(--felt);width:16px;height:16px}
+
+  .note-text{font-size:12.5px;line-height:1.55;color:#8C7A6D;margin-top:20px}
+  .alert{
+    margin-top:14px;padding:11px 13px;border-left:2px solid var(--felt);
+    background:rgba(160,50,44,.1);font-size:13px;line-height:1.5;color:#E6D5CB;display:none
+  }
+  .alert.show{display:block}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="mark">FELT</div>
+    <div class="tag">Hum, sing or whistle. A piano plays what it hears.</div>
+  </header>
+
+  <div class="stage">
+    <div class="note-row">
+      <span class="hz" id="hzLeft"></span>
+      <div class="note idle" id="note">—</div>
+      <span class="hz" id="hzRight" style="text-align:right"></span>
+    </div>
+
+    <div class="needle">
+      <span class="flat">flat</span><span class="sharp">sharp</span>
+      <div class="track"></div><div class="center"></div>
+      <div class="tick" id="tick" style="left:50%;opacity:0"></div>
+    </div>
+
+    <canvas id="trail" width="760" height="192" aria-hidden="true"></canvas>
+    <div class="meter"><i id="level"></i></div>
+  </div>
+
+  <div class="keys"><div class="kb" id="kb"></div></div>
+
+  <div class="panel">
+    <button class="start" id="startBtn">Start listening</button>
+    <div class="status" id="status">Idle. Tap the keys above to hear the piano.</div>
+    <button class="ghost" id="demoBtn">Play a test phrase (no mic needed)</button>
+
+    <div class="transport">
+      <button class="ghost rec" id="recBtn">Record</button>
+      <button class="ghost" id="playBtn" disabled>Play back</button>
+      <button class="ghost" id="saveBtn" disabled>Save audio</button>
+    </div>
+    <div class="status" id="takeInfo">No take yet. Record captures whatever the piano plays, from your voice or the keys.</div>
+
+    <div class="row">
+      <label for="inst">Instrument</label>
+      <select id="inst">
+        <option value="piano" selected>Grand piano</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <label for="sens">Sensitivity</label>
+      <input type="range" id="sens" min="0" max="100" value="52">
+      <span class="val" id="sensVal">52</span>
+    </div>
+
+    <div class="row">
+      <label for="oct">Octave</label>
+      <input type="range" id="oct" min="-2" max="2" step="1" value="0">
+      <span class="val" id="octVal">0</span>
+    </div>
+
+    <div class="row">
+      <label for="vol">Volume</label>
+      <input type="range" id="vol" min="0" max="100" value="72">
+      <span class="val" id="volVal">72</span>
+    </div>
+
+    <div class="toggles">
+      <label><input type="checkbox" id="pedal" checked> Let notes ring</label>
+      <label><input type="checkbox" id="hold"> Hold instead of decay</label>
+    </div>
+  </div>
+
+  <div class="alert" id="alert"></div>
+
+  <p class="note-text">
+    Wear headphones. On speakers the piano feeds back into the mic and the app starts
+    chasing its own tail. A steady hum on “ooh” tracks better than words, and single
+    notes work better than chords — it follows one pitch at a time.
+  </p>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+  const LOW = 36, HIGH = 84;                 // C2 … C6 on the drawn keyboard
+  const MIN_HZ = 65, MAX_HZ = 1300;          // detector search range
+
+  const $ = id => document.getElementById(id);
+  const noteEl = $("note"), tickEl = $("tick"), levelEl = $("level");
+  const hzL = $("hzLeft"), hzR = $("hzRight"), alertEl = $("alert");
+  const startBtn = $("startBtn"), kb = $("kb"), statusEl = $("status");
+  const say = (msg, kind) => { statusEl.textContent = msg; statusEl.className = "status" + (kind ? " " + kind : ""); };
+  const cvs = $("trail"), g = cvs.getContext("2d");
+
+  let ac = null, analyser = null, buf = null, media = null, srcNode = null;
+  let master = null;
+  let running = false, timer = 0;
+
+  /* ---------------- keyboard ---------------- */
+  const isBlack = m => [1,3,6,8,10].includes(((m % 12) + 12) % 12);
+  const keyEls = new Map();
+  (function drawKeys(){
+    const whites = [];
+    for (let m = LOW; m <= HIGH; m++) if (!isBlack(m)) whites.push(m);
+    const w = 100 / whites.length;
+    let wi = 0;
+    for (let m = LOW; m <= HIGH; m++) {
+      const el = document.createElement("div");
+      if (!isBlack(m)) {
+        el.className = "w";
+        el.style.left = (wi * w) + "%";
+        el.style.width = w + "%";
+        wi++;
+      } else {
+        el.className = "b";
+        el.style.left = (wi * w - w * 0.30) + "%";
+        el.style.width = (w * 0.60) + "%";
+      }
+      el.dataset.m = m;
+      el.addEventListener("pointerdown", () => { ensureAudio(); strike(m, 0.8); light(m, 220); });
+      kb.appendChild(el);
+      keyEls.set(m, el);
+    }
+  })();
+
+  function light(m, ms) {
+    const el = keyEls.get(m);
+    if (!el) return;
+    el.classList.add("on");
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove("on"), ms || 160);
+  }
+
+  /* ---------------- audio graph ----------------
+     Built as a function so the same signal path can be rebuilt inside an
+     OfflineAudioContext when rendering a take to a file.                  */
+  function buildChain(actx, vol) {
+    const m = actx.createGain();
+    m.gain.value = vol;
+
+    const comp = actx.createDynamicsCompressor();
+    comp.threshold.value = -14; comp.ratio.value = 3; comp.attack.value = 0.004; comp.release.value = 0.25;
+
+    const verb = actx.createConvolver();
+    verb.buffer = impulse(actx, 2.4, 3.0);
+    const w = actx.createGain(); w.gain.value = 0.20;
+    const d = actx.createGain(); d.gain.value = 1.0;
+
+    m.connect(d).connect(comp);
+    m.connect(verb).connect(w).connect(comp);
+    comp.connect(actx.destination);
+    return m;
+  }
+
+  function ensureAudio() {
+    if (ac) { if (ac.state === "suspended") ac.resume(); return ac; }
+    ac = new (window.AudioContext || window.webkitAudioContext)();
+    master = buildChain(ac, +$("vol").value / 100 * 0.55);
+    return ac;
+  }
+
+  function impulse(actx, sec, decay) {
+    const rate = actx.sampleRate, len = Math.floor(rate * sec);
+    const b = actx.createBuffer(2, len, rate);
+    for (let c = 0; c < 2; c++) {
+      const d = b.getChannelData(c);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+    }
+    return b;
+  }
+
+  const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
+
+  /* ---------------- the piano voice ----------------
+     Strung as partials with a touch of inharmonicity, a felt-hammer noise
+     transient, and a filter that closes as the note settles.               */
+  const PARTIALS = [
+    { n:1, g:1.00, d:7.5 }, { n:2, g:0.52, d:5.4 }, { n:3, g:0.30, d:3.9 },
+    { n:4, g:0.17, d:2.9 }, { n:5, g:0.10, d:2.2 }, { n:6, g:0.065,d:1.7 },
+    { n:8, g:0.035,d:1.2 }, { n:10,g:0.02, d:0.9 }
+  ];
+  const B = 0.0004;                    // string stiffness
+  let live = [];                       // ringing voices
+  let tape = [], recording = false, takeStart = 0, playing = false, playTimers = [];
+
+  function voiceAt(actx, dest, midi, vel, when, holdMode, releaseAt) {
+    const f = mtof(midi);
+    if (f < 20 || f > 8000) return null;
+
+    const t = when;
+    const scale = Math.min(3.0, Math.max(0.55, 300 / f * 1.35));   // low notes ring longer
+    const amp = 0.16 + 0.34 * vel;
+
+    const body = actx.createGain();
+    body.gain.setValueAtTime(1, t);
+
+    const filt = actx.createBiquadFilter();
+    filt.type = "lowpass"; filt.Q.value = 0.5;
+    filt.frequency.setValueAtTime(Math.min(15000, f * 12), t);
+    filt.frequency.exponentialRampToValueAtTime(Math.max(500, f * (2.6 + 2 * vel)), t + 0.55);
+
+    body.connect(filt).connect(dest);
+
+    const parts = [];
+    for (const p of PARTIALS) {
+      const freq = f * p.n * Math.sqrt(1 + B * p.n * p.n);
+      if (freq > actx.sampleRate / 2.2) continue;
+      const o = actx.createOscillator();
+      o.type = "sine";
+      o.frequency.value = freq;
+      o.detune.value = (Math.random() - 0.5) * 5;                 // unison shimmer
+      const gn = actx.createGain();
+      const peak = amp * p.g * (0.65 + 0.5 * vel);
+      gn.gain.setValueAtTime(0.0001, t);
+      gn.gain.linearRampToValueAtTime(peak, t + 0.006);
+      if (holdMode) {
+        gn.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak * 0.55), t + 0.30);
+      } else {
+        gn.gain.exponentialRampToValueAtTime(0.0001, t + p.d * scale);
+      }
+      o.connect(gn).connect(body);
+      o.start(t);
+      parts.push({ o, gn });
+    }
+
+    // felt hammer thump
+    const nb = actx.createBuffer(1, Math.floor(actx.sampleRate * 0.05), actx.sampleRate);
+    const nd = nb.getChannelData(0);
+    for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * (1 - i / nd.length);
+    const ns = actx.createBufferSource(); ns.buffer = nb;
+    const nf = actx.createBiquadFilter(); nf.type = "bandpass"; nf.frequency.value = Math.min(6000, f * 3); nf.Q.value = 0.8;
+    const ng = actx.createGain();
+    ng.gain.setValueAtTime(0.10 * vel, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    ns.connect(nf).connect(ng).connect(body);
+    ns.start(t); ns.stop(t + 0.09);
+
+    const voice = {
+      midi, parts, body, released: false,
+      end: t + (holdMode ? 120 : Math.min(9, 7.5 * scale + 0.4)),
+      release(when2, time) {
+        if (this.released) return;
+        this.released = true;
+        const w = Math.max(when2, actx.currentTime);
+        try {
+          this.body.gain.cancelScheduledValues(w);
+          this.body.gain.setValueAtTime(this.body.gain.value, w);
+          this.body.gain.exponentialRampToValueAtTime(0.0001, w + (time || 0.22));
+        } catch (e) {}
+        for (const p of this.parts) { try { p.o.stop(w + (time || 0.22) + 0.05); } catch (e) {} }
+        this.end = w + (time || 0.22) + 0.1;
+      },
+      kill() { for (const p of this.parts) { try { p.o.stop(); } catch (e) {} } }
+    };
+
+    if (!holdMode) for (const p of parts) { try { p.o.stop(voice.end + 0.05); } catch (e) {} }
+
+    // pre-scheduled damping, used when replaying or rendering a recorded take
+    if (releaseAt != null && releaseAt > t) {
+      try {
+        body.gain.setValueAtTime(1, releaseAt);
+        body.gain.exponentialRampToValueAtTime(0.0001, releaseAt + 0.22);
+      } catch (e) {}
+      for (const p of parts) { try { p.o.stop(releaseAt + 0.3); } catch (e) {} }
+      voice.end = releaseAt + 0.35;
+      voice.released = true;
+    }
+    return voice;
+  }
+
+  function strike(midi, vel) {
+    ensureAudio();
+    const shifted = midi + 12 * (+$("oct").value);
+    const holdMode = $("hold").checked;
+    const v = voiceAt(ac, master, shifted, vel, ac.currentTime + 0.005, holdMode, null);
+    if (!v) return null;
+
+    live.push(v);
+    while (live.filter(x => !x.released).length > 14) {
+      const oldest = live.find(x => !x.released);
+      if (!oldest) break;
+      oldest.release(ac.currentTime, 0.25);
+    }
+    if (recording) tape.push({ m: shifted, v: vel, t: ac.currentTime - takeStart, hold: holdMode, off: null });
+    return v;
+  }
+
+  function reap() {
+    const now = ac ? ac.currentTime : 0;
+    live = live.filter(v => { if (v.end < now) { v.kill(); return false; } return true; });
+  }
+
+  /* ---------------- pitch detection ----------------
+     Normalized autocorrelation over a bounded lag range, first-peak picking
+     to dodge octave errors, parabolic interpolation for cents accuracy.   */
+  function detect(x, rate) {
+    let rms = 0;
+    for (let i = 0; i < x.length; i++) rms += x[i] * x[i];
+    rms = Math.sqrt(rms / x.length);
+    if (rms < gate()) return { hz: -1, rms, clarity: 0 };
+
+    const minLag = Math.max(2, Math.floor(rate / MAX_HZ));
+    const maxLag = Math.min(Math.floor(rate / MIN_HZ), Math.floor(x.length / 2));
+    const corr = new Float32Array(maxLag + 2);
+    let best = 0, bestLag = -1;
+
+    for (let lag = minLag; lag <= maxLag; lag++) {
+      let s = 0, a = 0, b = 0;
+      for (let i = 0, n = x.length - lag; i < n; i += 2) {
+        const u = x[i], v = x[i + lag];
+        s += u * v; a += u * u; b += v * v;
+      }
+      const c = s / (Math.sqrt(a * b) + 1e-9);
+      corr[lag] = c;
+      if (c > best) { best = c; bestLag = lag; }
+    }
+    if (bestLag < 0 || best < 0.55) return { hz: -1, rms, clarity: best };
+
+    // earliest lag that nearly matches the best — the true fundamental
+    let lag = bestLag;
+    for (let i = minLag + 1; i < bestLag; i++) {
+      if (corr[i] > best * 0.86 && corr[i] > corr[i - 1] && corr[i] >= corr[i + 1]) { lag = i; break; }
+    }
+    const y1 = corr[lag - 1] || 0, y2 = corr[lag], y3 = corr[lag + 1] || 0;
+    const den = 2 * (2 * y2 - y1 - y3);
+    const refined = den !== 0 ? lag + (y3 - y1) / den : lag;
+    return { hz: rate / refined, rms, clarity: best };
+  }
+
+  function gate() {
+    const s = +$("sens").value / 100;       // 0 loose … 1 tight is inverted below
+    return 0.003 + Math.pow(1 - s, 2) * 0.06;
+  }
+
+  /* ---------------- tracking loop ---------------- */
+  let current = null, cand = -1, candN = 0, quiet = 0, lastHz = 0;
+
+  function loop() {
+    analyser.getFloatTimeDomainData(buf);
+    const { hz, rms, clarity } = detect(buf, ac.sampleRate);
+    levelEl.style.width = Math.min(100, rms * 700) + "%";
+
+    if (hz > 0 && clarity > 0.55) {
+      quiet = 0;
+      lastHz = lastHz ? lastHz * 0.55 + hz * 0.45 : hz;      // smooth the readout
+      const exact = 69 + 12 * Math.log2(lastHz / 440);
+      const midi = Math.round(exact);
+      const cents = Math.round((exact - midi) * 100);
+      show(midi, lastHz, cents);
+
+      if (midi === cand) candN++; else { cand = midi; candN = 1; }
+
+      if (candN >= 2 && midi !== current) {
+        const vel = Math.max(0.25, Math.min(1, (rms - gate()) / 0.09 + 0.3));
+        if (current !== null && !$("pedal").checked) releaseAll(0.16);
+        if ($("hold").checked) releaseAll(0.12);
+        strike(midi, vel);
+        light(midi, $("hold").checked ? 4000 : 700);
+        current = midi;
+      }
+    } else {
+      quiet++;
+      if (quiet > 3) {
+        if (current !== null) {
+          if ($("hold").checked || !$("pedal").checked) releaseAll(0.3);
+          current = null; cand = -1; candN = 0;
+          for (const el of keyEls.values()) el.classList.remove("on");
+        }
+        lastHz = 0;
+        show(null);
+      }
+    }
+    trail(hz > 0 && clarity > 0.55 ? lastHz : 0, clarity);
+    reap();
+  }
+
+  function releaseAll(t) {
+    for (const v of live) v.release(ac.currentTime, t);
+    if (recording) {
+      const now = ac.currentTime - takeStart;
+      for (const e of tape) if (e.off == null && e.t < now) e.off = now;
+    }
+  }
+
+  function show(midi, hz, cents) {
+    if (midi === null) {
+      noteEl.textContent = "—";
+      noteEl.classList.add("idle");
+      hzL.textContent = ""; hzR.textContent = "";
+      tickEl.style.opacity = 0;
+      return;
+    }
+    noteEl.classList.remove("idle");
+    const name = NAMES[((midi % 12) + 12) % 12];
+    const oct = Math.floor(midi / 12) - 1;
+    noteEl.innerHTML = name.replace("#", "♯") + "<sub>" + oct + "</sub>";
+    hzR.textContent = hz.toFixed(1) + " Hz";
+    hzL.textContent = (cents > 0 ? "+" : "") + cents + "¢";
+    tickEl.style.opacity = 1;
+    tickEl.style.left = (50 + Math.max(-50, Math.min(50, cents))) + "%";
+  }
+
+  /* ---------------- pitch trail ---------------- */
+  function paintBg() {
+    g.fillStyle = "#1C1310";
+    g.fillRect(0, 0, cvs.width, cvs.height);
+  }
+  paintBg();
+
+  function trail(hz, clarity) {
+    const w = cvs.width, h = cvs.height;
+    g.drawImage(cvs, -2, 0);
+    g.fillStyle = "#1C1310";
+    g.fillRect(w - 2, 0, 2, h);
+    if (hz > 0) {
+      const m = 69 + 12 * Math.log2(hz / 440);
+      const y = h - ((m - LOW) / (HIGH - LOW)) * h;
+      if (y > -4 && y < h + 4) {
+        g.fillStyle = "rgba(201,151,63," + (0.35 + 0.65 * clarity) + ")";
+        g.fillRect(w - 3, y - 1.5, 3, 3);
+      }
+    }
+  }
+
+  /* ---------------- mic ---------------- */
+  function withTimeout(p, ms) {
+    return Promise.race([p, new Promise((_, rej) =>
+      setTimeout(() => rej(new Error("timeout")), ms))]);
+  }
+
+  async function start() {
+    say("Asking for microphone access…");
+    try {
+      ensureAudio();
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error(window.isSecureContext === false ? "insecure" : "unsupported");
+      }
+
+      media = await withTimeout(navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 }
+      }), 8000);
+      srcNode = ac.createMediaStreamSource(media);
+      analyser = ac.createAnalyser();
+      analyser.fftSize = 2048;
+      buf = new Float32Array(analyser.fftSize);
+      srcNode.connect(analyser);                 // never to destination — that's a feedback loop
+      running = true;
+      startBtn.textContent = "Stop listening";
+      startBtn.classList.add("live");
+      alertEl.classList.remove("show");
+      say("Listening. Hum a steady note.", "good");
+      timer = setInterval(loop, 30);
+    } catch (e) {
+      const name = e && (e.name || e.message);
+      let why;
+      if (name === "timeout") {
+        why = "The mic request never came back — this page is probably inside a sandboxed preview that blocks it.";
+      } else if (name === "insecure") {
+        why = "Browsers only allow the mic on https or localhost. This page is on neither.";
+      } else if (name === "NotAllowedError" || name === "SecurityError") {
+        why = "Mic access was refused, either by you or by the page's sandbox.";
+      } else if (name === "NotFoundError" || name === "OverconstrainedError") {
+        why = "No microphone was found on this device.";
+      } else {
+        why = "The mic couldn't start (" + name + ").";
+      }
+      say(why + " Download this file and open it in Chrome or Safari directly.", "bad");
+      alertEl.textContent = why + " The piano itself still works — tap the keys, or use the test phrase button. " +
+        "To use the mic: save this file, then open it in a normal browser tab over https or localhost.";
+      alertEl.classList.add("show");
+      startBtn.textContent = "Start listening";
+      startBtn.classList.remove("live");
+      running = false;
+    }
+  }
+
+  function stop() {
+    running = false;
+    clearInterval(timer);
+    if (media) media.getTracks().forEach(t => t.stop());
+    if (srcNode) srcNode.disconnect();
+    releaseAll(0.4);
+    current = null; cand = -1; candN = 0; lastHz = 0;
+    for (const el of keyEls.values()) el.classList.remove("on");
+    show(null);
+    levelEl.style.width = "0%";
+    startBtn.textContent = "Start listening";
+    startBtn.classList.remove("live");
+    say("Stopped.");
+  }
+
+  startBtn.addEventListener("click", () => running ? stop() : start());
+
+  // Proves the synth and your speakers work, with no microphone involved.
+  $("demoBtn").addEventListener("click", () => {
+    ensureAudio();
+    say("Playing a test phrase. If you hear nothing, check your volume.", "good");
+    const phrase = [64, 67, 71, 72, 71, 67, 64, 60];
+    phrase.forEach((m, i) => setTimeout(() => {
+      strike(m, 0.55 + (i % 3) * 0.15);
+      light(m, 400);
+    }, i * 260));
+  });
+
+  /* ---------------- control wiring ---------------- */
+  $("vol").addEventListener("input", e => {
+    $("volVal").textContent = e.target.value;
+    if (master) master.gain.setTargetAtTime(+e.target.value / 100 * 0.55, ac.currentTime, 0.02);
+  });
+  $("sens").addEventListener("input", e => $("sensVal").textContent = e.target.value);
+  $("oct").addEventListener("input", e => $("octVal").textContent = (e.target.value > 0 ? "+" : "") + e.target.value);
+  $("hold").addEventListener("change", () => releaseAll(0.2));
+
+  /* ---------------- record, play back, save ----------------
+     The tape stores note events, not audio. Playback re-performs them on the
+     same synth, and saving re-renders them offline into a WAV file.        */
+  const recBtn = $("recBtn"), playBtn = $("playBtn"), saveBtn = $("saveBtn"), takeInfo = $("takeInfo");
+  let recTick = 0;
+
+  function takeLength() {
+    if (!tape.length) return 0;
+    return tape[tape.length - 1].t + 3;
+  }
+
+  function updateTake(msg) {
+    const has = tape.length > 0;
+    playBtn.disabled = !has || recording;
+    saveBtn.disabled = !has || recording;
+    takeInfo.textContent = msg !== undefined ? msg
+      : has ? tape.length + " notes, " + takeLength().toFixed(1) + "s. Play it back or save it as a file."
+            : "No take yet. Record captures whatever the piano plays, from your voice or the keys.";
+  }
+
+  recBtn.addEventListener("click", () => {
+    ensureAudio();
+    if (recording) {
+      recording = false;
+      clearInterval(recTick);
+      recBtn.textContent = "Record";
+      recBtn.classList.remove("armed");
+      updateTake();
+    } else {
+      stopPlayback();
+      tape = [];
+      takeStart = ac.currentTime;
+      recording = true;
+      recBtn.textContent = "Stop";
+      recBtn.classList.add("armed");
+      playBtn.disabled = saveBtn.disabled = true;
+      recTick = setInterval(() => {
+        takeInfo.textContent = "Recording " + (ac.currentTime - takeStart).toFixed(1) + "s · " + tape.length + " notes";
+      }, 200);
+      takeInfo.textContent = "Recording. Hum, or tap the keys.";
+    }
+  });
+
+  function stopPlayback() {
+    playing = false;
+    playTimers.forEach(clearTimeout);
+    playTimers = [];
+    playBtn.textContent = "Play back";
+  }
+
+  playBtn.addEventListener("click", () => {
+    ensureAudio();
+    if (playing) { stopPlayback(); releaseAll(0.2); updateTake(); return; }
+    playing = true;
+    playBtn.textContent = "Stop";
+    const base = ac.currentTime + 0.15;
+    for (const e of tape) {
+      const v = voiceAt(ac, master, e.m, e.v, base + e.t, e.hold, e.off != null ? base + e.off : null);
+      if (v) live.push(v);
+      playTimers.push(setTimeout(() => light(e.m - 12 * (+$("oct").value), 400), e.t * 1000 + 150));
+    }
+    playTimers.push(setTimeout(() => { stopPlayback(); updateTake(); }, takeLength() * 1000 + 400));
+    takeInfo.textContent = "Playing back.";
+  });
+
+  saveBtn.addEventListener("click", async () => {
+    if (!tape.length) return;
+    saveBtn.disabled = true;
+    takeInfo.textContent = "Rendering audio…";
+    try {
+      const rate = 44100;
+      const dur = takeLength() + 2;
+      const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+      const off = new OC(2, Math.ceil(rate * dur), rate);
+      const dest = buildChain(off, +$("vol").value / 100 * 0.55);
+      for (const e of tape) {
+        voiceAt(off, dest, e.m, e.v, 0.1 + e.t, e.hold, e.off != null ? 0.1 + e.off : null);
+      }
+      const rendered = await off.startRendering();
+      const blob = new Blob([encodeWav(rendered)], { type: "audio/wav" });
+      const name = "felt-take-" + new Date().toISOString().slice(11, 19).replace(/:/g, "") + ".wav";
+      const file = new File([blob], name, { type: "audio/wav" });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({ files: [file], title: "Felt take" });
+        takeInfo.textContent = "Shared.";
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 4000);
+        takeInfo.textContent = "Saved " + name;
+      }
+    } catch (e) {
+      takeInfo.textContent = "Couldn't render the audio (" + (e && e.name) + "). Playback still works.";
+    }
+    saveBtn.disabled = false;
+  });
+
+  function encodeWav(buffer) {
+    const chans = buffer.numberOfChannels, len = buffer.length;
+    const out = new ArrayBuffer(44 + len * chans * 2);
+    const dv = new DataView(out);
+    const str = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+    str(0, "RIFF"); dv.setUint32(4, 36 + len * chans * 2, true); str(8, "WAVE");
+    str(12, "fmt "); dv.setUint32(16, 16, true); dv.setUint16(20, 1, true);
+    dv.setUint16(22, chans, true); dv.setUint32(24, buffer.sampleRate, true);
+    dv.setUint32(28, buffer.sampleRate * chans * 2, true); dv.setUint16(32, chans * 2, true);
+    dv.setUint16(34, 16, true); str(36, "data"); dv.setUint32(40, len * chans * 2, true);
+    const data = [];
+    for (let c = 0; c < chans; c++) data.push(buffer.getChannelData(c));
+    let o = 44;
+    for (let i = 0; i < len; i++) {
+      for (let c = 0; c < chans; c++) {
+        let s = Math.max(-1, Math.min(1, data[c][i]));
+        dv.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+        o += 2;
+      }
+    }
+    return out;
+  }
+
+  window.addEventListener("keydown", e => {
+    if (e.code === "Space") { e.preventDefault(); running ? stop() : start(); }
+  });
+})();
+</script>
+</body>
+</html>
